@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: rewards
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    networks:
+      - laravel_network
+
+  # Redis Service
+  redis:
+    image: redis:6.0
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - laravel_network
+
+  # Laravel App Service
+  app:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./www:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - laravel_network
+    depends_on:
+      - mysql_db
+      - redis
+
+  # Nginx Service
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./:/var/www
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    networks:
+      - laravel_network
+    depends_on:
+      - app
+
+networks:
+  laravel_network:
+
+volumes:
+  mysql_data:
